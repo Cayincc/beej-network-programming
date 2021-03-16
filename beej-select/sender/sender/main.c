@@ -1,8 +1,8 @@
 //
 //  main.c
-//  sender-client
+//  sender
 //
-//  Created by wan zhongwen on 2021/3/11.
+//  Created by wan zhongwen on 2021/3/16.
 //
 
 #include <stdio.h>
@@ -12,8 +12,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <netdb.h>
-
-#include <stdio.h>
 
 int main(int argc, const char * argv[]) {
     int sockfd;
