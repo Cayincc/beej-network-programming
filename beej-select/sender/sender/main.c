@@ -13,10 +13,34 @@
 #include <string.h>
 #include <netdb.h>
 
+int sendall(int s, char *buf, int *len)
+{
+    int total = 0;
+    int bytesleft = *len;
+    int n = -1;
+    
+    while (total < *len) {
+        n = send(s, buf, bytesleft, 0);
+        if (n == -1) {
+            break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+    
+    *len = total;
+    
+    return n == -1?-1:0;
+}
+
 int main(int argc, const char * argv[]) {
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
-    int rv, send_bytes;
+    int rv;
+    int send_buff_size = 1024;
+    int actually_buff_size;
+//    socklen_t alen = sizeof(int);
+//    ssize_t send_bytes;
 
     if (argc != 4)
     {
@@ -43,6 +67,9 @@ int main(int argc, const char * argv[]) {
             continue;
         }
         
+        setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &send_buff_size, sizeof(send_buff_size));
+//        getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &actually_buff_size, &alen);
+        
         if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1)
         {
             perror("connect");
@@ -61,13 +88,22 @@ int main(int argc, const char * argv[]) {
 
     freeaddrinfo(servinfo);
 
-    if ((send_bytes = send(sockfd , argv[3] , strlen(argv[3]) , 0)) == -1)
-    {
-        perror("send");
+//    if ((send_bytes = send(sockfd , argv[3] , strlen(argv[3]) , 0)) == -1)
+//    {
+//        close(sockfd);
+//        perror("send");
+//        exit(EXIT_FAILURE);
+//    }
+
+    int len = (int)strlen(argv[3]);
+    
+    if (sendall(sockfd, (char *)&argv[3], &len) == -1) {
+        close(sockfd);
+        fprintf(stderr, "sendall failed\n");
         exit(EXIT_FAILURE);
     }
-
-    printf("send_bytes: %d\n", send_bytes);
+    
+    printf("send_bytes: %d\n", len);
 
     close(sockfd);
     

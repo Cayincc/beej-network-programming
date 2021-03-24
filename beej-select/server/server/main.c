@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -37,7 +38,8 @@ int main(int argc, const char * argv[])
     struct sockaddr_storage remoteaddr;
     socklen_t addrlen;
     
-    char buf[256];
+    char buf[1024];
+    int buf_size = sizeof(buf);
     ssize_t nbytes;
     
     char remoteIP[INET6_ADDRSTRLEN];
@@ -63,6 +65,8 @@ int main(int argc, const char * argv[])
         if ((listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             continue;
         }
+        
+        fcntl(listener,  F_SETFL, O_NONBLOCK);
         
         setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
         
@@ -103,6 +107,9 @@ int main(int argc, const char * argv[])
                 if (i == listener) {
                     addrlen = sizeof(remoteaddr);
                     newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
+                    
+                    fcntl(newfd,  F_SETFL, O_NONBLOCK);
+
                     if (newfd == -1) {
                         perror("accept");
                     } else {
@@ -113,7 +120,7 @@ int main(int argc, const char * argv[])
                         printf("selectserver: new connection from %s on socket %d\n", inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN), newfd);
                     }
                 } else {
-                    if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
+                    if ((nbytes = recv(i, buf, buf_size, 0)) <= 0) {
                         if (nbytes == 0) {
                             printf("selectserver: socket %d hung up\n", i);
                         } else {
@@ -122,6 +129,7 @@ int main(int argc, const char * argv[])
                         close(i);
                         FD_CLR(i, &master);
                     } else {
+                        printf("recv %d, recv_len %zd, bufsize %d:\n %s\n", i, nbytes, buf_size, buf);
                         for (j = 0; j <= fdmax; j++) {
                             if (FD_ISSET(j, &master)) {
                                 if (j != listener && j != i) {
